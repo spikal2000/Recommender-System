@@ -12,9 +12,12 @@ from matplotlib import pyplot as plt
 #dezcribe dataset, size
 #reverse order: the book popularity, the author popularity, and the age ranges by reading activity
 
-books = pd.read_csv("data\BX-Books.csv", encoding='ISO-8859-1', sep=";", error_bad_lines=False)
-users = pd.read_csv("data\BX-Users.csv", encoding='ISO-8859-1', sep=";", error_bad_lines=False)
-ratings = pd.read_csv("data\BX-Book-Ratings.csv", encoding='ISO-8859-1', sep=";", error_bad_lines=False)
+books = pd.read_csv("data\BX-Books.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip', 
+dtype={'ISBN': 'str', 'Book-Title': 'str', "Book-Author": 'str',"Year-Of-Publication": 'str',"Publisher": 'str',"Image-URL-S": 'str',"Image-URL-M": 'str',"Image-URL-L": 'str'})
+users = pd.read_csv("data\BX-Users.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip', 
+                    dtype={"User-ID": 'str', "Location": 'str', "Age": 'str'})
+ratings = pd.read_csv("data\BX-Book-Ratings.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip',
+                      dtype={"User-ID": 'str',"ISBN":'str',"Book-Rating":'str'})
 #
 #BX-Book-Ratings.csv
 df =  pd.merge(ratings, users)
@@ -34,9 +37,9 @@ print('_____Number of Readers_____')
 print(data["User-ID"].nunique())
 #csvframe.info(memory_usage='deep')
 print("---------------------------Q1----------------------------------------")
-print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******")
+print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******\n")
 print(data["Book-Title"].value_counts().sort_values())
-print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******")
+print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
 print(data["Book-Author"].value_counts().sort_values())
 #________________________TODO: DELETE CODE:__________________________
 '''
