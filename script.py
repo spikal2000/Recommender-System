@@ -24,9 +24,9 @@ df =  pd.merge(ratings, users)
 
 data = pd.merge(df, books)
 #data = data.dropna(inplace=True)
-data.dropna(inplace=True)
+#data.dropna(inplace=True)
 #data1 = data.head()
-print("------------------------------DataInfo---------------------------------")
+print("\t\t---------------------------------DataInfo---------------------------------")
 print('Data Size: ', data.size)# contains info from all the tables
 print('Data Shape: ', data.shape)
 print('_____Data Describe_____')
@@ -36,7 +36,7 @@ print(data['Book-Author'].nunique())
 print('_____Number of Readers_____')
 print(data["User-ID"].nunique())
 #csvframe.info(memory_usage='deep')
-print("---------------------------Q1----------------------------------------")
+print("\t\t---------------------------------Q1---------------------------------")
 print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******\n")
 print(data["Book-Title"].value_counts().sort_values())
 print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
@@ -75,7 +75,7 @@ print(authorReverse_df.sort_values(by='nums', ascending=True))
 #old Adults = 46-pano
 
 #reading activity
-'''
+print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
 ageRanges = {'0-2':[], '3-12':[], '13-18':[], '19-30':[],'31-45':[], '46>':[], 'null':[]}
 
 for row in range(data.shape[0]):
@@ -108,7 +108,7 @@ ageRange_df = pd.DataFrame({'AgeRange':ageRanges.keys(), 'ReadingActivity(books)
 
 print("Age ranges by reading activity")
 print(ageRange_df)
-'''
+
 #----------------------------------------------------------------------------------------------------------------------------------------
 #Q1-B
 
