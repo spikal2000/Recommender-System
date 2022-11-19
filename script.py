@@ -3,7 +3,7 @@
 Created on Sat Nov 12 11:23:02 2022
 
 """
-
+import re
 import pandas as pd
 import numpy as np
 import math
@@ -18,13 +18,18 @@ users = pd.read_csv("data\BX-Users.csv", encoding='ISO-8859-1', sep=";", on_bad_
                     dtype={"User-ID": 'str', "Location": 'str', "Age": 'str'})
 ratings = pd.read_csv("data\BX-Book-Ratings.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip',
                       dtype={"User-ID": 'str',"ISBN":'str',"Book-Rating":'str'})
-#
+
 #BX-Book-Ratings.csv
 df =  pd.merge(ratings, users)
 
 data = pd.merge(df, books)
-#data = data.dropna(inplace=True)
-#data.dropna(inplace=True)
+#Drop all nan values
+data.dropna(inplace=True)
+#delete random book values '~' => remove
+#data['Book-Title'].loc[~data['Book-Title'].str.contains('\?', flags=re.I, regex=True)]
+#data.drop(data[data['Book-Title'].str.contains('?')], inplace = True)
+#convert Ages to int
+data['Age'] = data['Age'].astype('int')
 #data1 = data.head()
 print("\t\t---------------------------------DataInfo---------------------------------")
 print('Data Size: ', data.size)# contains info from all the tables
@@ -41,32 +46,7 @@ print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******\n")
 print(data["Book-Title"].value_counts().sort_values())
 print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
 print(data["Book-Author"].value_counts().sort_values())
-#________________________TODO: DELETE CODE:__________________________
-'''
-def popularity(data):
-    dic = {}
-    for i in data:
-        dic[i] = 0
 
-    for isbn in data:
-        if isbn in dic:
-            dic[isbn] +=1
-    return dic
-
-
-isbnCounter = popularity(data['ISBN'])
-booksReverse_df = pd.DataFrame({'ISBN': isbnCounter.keys(),'nums':  isbnCounter.values()})
-#{"ISBN": 2, "I"} 
-print("Books with the least popularity")
-print(booksReverse_df.sort_values(by='nums', ascending=True))
-
-#Reverse order Author Popularity
-authorCounter = popularity(data['Book-Author'])
-authorReverse_df = pd.DataFrame({'Book-Author': authorCounter.keys(),'nums':  authorCounter.values()})
-print("Authors with the least popularity")
-print(authorReverse_df.sort_values(by='nums', ascending=True))
-'''
-#___________________________________________________________________
 #babies = 0-2
 #children = 3-12
 #teens = 13-18
@@ -74,54 +54,24 @@ print(authorReverse_df.sort_values(by='nums', ascending=True))
 #Middle-aged adults = 31-45
 #old Adults = 46-pano
 
-#reading activity
-print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
-ageRanges = {'0-2':[], '3-12':[], '13-18':[], '19-30':[],'31-45':[], '46>':[], 'null':[]}
+print("\n\t\t\t\t******Age ranges by reading activity Q1-c******\n")
 
-for row in range(data.shape[0]):
-    age = data['Age'].iloc[[row]]
-    isbn = data['ISBN'].iloc[[row]].tolist()
-    isbn = isbn[0]
-    if math.isnan(age):
-        ageRanges['null'].append(isbn)
-    elif int(age) <= 2:
-        ageRanges['0-2'].append(isbn)
-        
-    elif int(age) >=3 and int(age)<=12:
-        ageRanges['3-12'].append(isbn)
-    elif int(age) >=13 and int(age)<=18:
-        ageRanges['13-18'].append(isbn)
-    elif int(age) >=19 and int(age)<=30:
-        ageRanges['19-30'].append(isbn)
-    elif int(age) >=31 and int(age)<=45:
-        ageRanges['31-45'].append(isbn)
-    elif int(age) >= 46:
-        ageRanges['46>'].append(isbn)
-        '''
-'''
-def rng(x):
-    rslt = []
-    for i in x:
-        rslt.append(len(i))
-    return rslt
-ageRange_df = pd.DataFrame({'AgeRange':ageRanges.keys(), 'ReadingActivity(books)': rng(ageRanges.values())})
-
-print("Age ranges by reading activity")
-print(ageRange_df)
+ageRanges = pd.DataFrame({'Age': data['Age']})
+ranges = [0, 2, 12, 18, 30, 45, 500]
+ageRanges = ageRanges.groupby(pd.cut(ageRanges.Age, ranges)).count()
+print(ageRanges)
 
 #----------------------------------------------------------------------------------------------------------------------------------------
-#Q1-B
+print("\t\t------------------------------Q1_Outlier detection I------------------------------")
+
+#books- popularity TODO: FIX HIST
+booksPopularity = pd.DataFrame(data["Book-Title"].value_counts())
+booksPopularity.rename(columns = {'Book-Title': 'Book-Popularity'}, inplace = True)
+booksPopularity.reset_index(inplace = True)
+plt.hist(booksPopularity['Book-Popularity'])
 
 
-
-
-
-
-
-
-
-
-
+usersPopularity = pd.DataFrame('Users': data['User-ID', ])
 
 
 
