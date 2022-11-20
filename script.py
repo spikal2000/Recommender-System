@@ -41,6 +41,8 @@ print(data['Book-Author'].nunique())
 print('_____Number of Readers_____')
 print(data["User-ID"].nunique())
 #csvframe.info(memory_usage='deep')
+#data['Book-Rating'].unique()
+#Out[59]: array([ 5,  0,  8,  9,  6,  7,  4,  3, 10,  1,  2])
 print("\t\t---------------------------------Q1---------------------------------")
 print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******\n")
 print(data["Book-Title"].value_counts().sort_values())
@@ -64,6 +66,7 @@ print(ageRanges)
 #----------------------------------------------------------------------------------------------------------------------------------------
 print("\t\t------------------------------Q1_Outlier detection I------------------------------")
 
+#Function to calculate zscore
 def zscore(nums):
     z = ( nums - nums.mean() ) / nums.std()
     return z
@@ -71,10 +74,10 @@ def zscore(nums):
 
 #Books-Popularity Outliers
 num_ratings_books = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
-num_ratings_books.rename(columns = {'Book-Rating': 'Ratings'}, inplace=True)
+num_ratings_books.rename(columns = {'Book-Rating': 'numRatings'}, inplace=True)
 #apply zscore: z = (x-μ)/σ
 #num_ratings_books['zscore'] = ( num_ratings_books.Ratings - num_ratings_books.Ratings.mean() ) / num_ratings_books.Ratings.std()
-num_ratings_books['zscore'] = zscore(num_ratings_books.Ratings)
+num_ratings_books['zscore'] = zscore(num_ratings_books.numRatings)
 booksOutliers = num_ratings_books[(num_ratings_books.zscore > -3) & (num_ratings_books.zscore < 3)]
 print("\n\t\t\t\t******Books-Popularity Outliers(sorted) Q1******\n")
 print(booksOutliers.sort_values('zscore'))
@@ -82,21 +85,33 @@ print(booksOutliers.sort_values('zscore'))
 
 #Authors-Popularity Outliers
 num_ratings_authors = data.groupby('Book-Author').count()['Book-Rating'].reset_index()
-num_ratings_authors.rename(columns = {'Book-Rating': 'Ratings'}, inplace=True)
+num_ratings_authors.rename(columns = {'Book-Rating': 'numRatings'}, inplace=True)
 #apply zscore: z = (x-μ)/σ
 #num_ratings_authors['zscore'] = ( num_ratings_authors.Ratings - num_ratings_authors.Ratings.mean() ) / num_ratings_authors.Ratings.std()
-num_ratings_authors['zscore'] = zscore(num_ratings_authors.Ratings)
+num_ratings_authors['zscore'] = zscore(num_ratings_authors.numRatings)
 authorOutliers = num_ratings_authors[(num_ratings_authors.zscore > -3) & (num_ratings_authors.zscore < 3)]
 print("\n\t\t\t\t******Authors-Popularity Outliers(sorted) Q1******\n")
 print(authorOutliers.sort_values('zscore'))
 
 
-#
+#USer-IDs Books Outliers
+num_ratings_user = data.groupby('User-ID').count()['ISBN'].reset_index()
+num_ratings_user.rename(columns = {'ISBN': 'numISBN'}, inplace=True)
+#apply zscore: z = (x-μ)/σ
+num_ratings_user['zscore'] = zscore(num_ratings_user.numISBN)
+userOutliers = num_ratings_user[(num_ratings_user.zscore > -3) & (num_ratings_user.zscore < 3)]
+print("\n\t\t\t\t******Users-Number of ISBN Outliers(sorted) Q1******\n")
+print(userOutliers.sort_values('zscore'))
 
 
 
 
 
+
+
+
+
+#-----------------------------------------------------------------------------------------------------------------------
 #usersPopularity = pd.DataFrame('Users': data['User-ID' ])
 #numRating = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
 #numRating.rename(columns={'Book-Rating': 'Num-Book-Rating'}, inplace=True)
