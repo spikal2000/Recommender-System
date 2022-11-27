@@ -9,6 +9,7 @@ import numpy as np
 import math
 import matplotlib
 from matplotlib import pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
 #dezcribe dataset, size
 #reverse order: the book popularity, the author popularity, and the age ranges by reading activity
 
@@ -21,8 +22,8 @@ ratings = pd.read_csv("data\BX-Book-Ratings.csv", encoding='ISO-8859-1', sep=";"
 
 #BX-Book-Ratings.csv
 df =  pd.merge(ratings, users)
-
 data = pd.merge(df, books)
+data = data.head(100000)
 #Drop all nan values
 data.dropna(inplace=True)
 #delete random book values '~' => remove
@@ -30,6 +31,7 @@ data.dropna(inplace=True)
 #data.drop(data[data['Book-Title'].str.contains('?')], inplace = True)
 #convert Ages to int
 data['Age'] = data['Age'].astype('int')
+data = data.reset_index()
 #data1 = data.head()
 print("\t\t---------------------------------DataInfo---------------------------------")
 print('Data Size: ', data.size)# contains info from all the tables
@@ -64,7 +66,7 @@ ageRanges = ageRanges.groupby(pd.cut(ageRanges.Age, ranges)).count()
 print(ageRanges)
 
 #----------------------------------------------------------------------------------------------------------------------------------------
-print("\t\t------------------------------Q1_Outlier detection I------------------------------")
+print("\t\t--------------------------Q1_Outlier detection I--------------------------")
 
 #Function to calculate zscore
 def zscore(nums):
@@ -103,35 +105,129 @@ userOutliers = num_ratings_user[(num_ratings_user.zscore > -3) & (num_ratings_us
 print("\n\t\t\t\t******Users-Number of ISBN Outliers(sorted) Q1******\n")
 print(userOutliers.sort_values('zscore'))
 
-
-
-
-
-
-
-
-
 #-----------------------------------------------------------------------------------------------------------------------
-#usersPopularity = pd.DataFrame('Users': data['User-ID' ])
-#numRating = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
-#numRating.rename(columns={'Book-Rating': 'Num-Book-Rating'}, inplace=True)
+print("\t\t--------------------------Q2_Recommender System--------------------------")
+print("\n\t\t\t\t******Find similarities Q2-a******\n")
+
+#{'User-ID': [books]}
+'''
+user_books = {}
+
+for i in range(1, len(data)):
+    user = data['User-ID'][i]
+    if (userOutliers.loc[userOutliers['User-ID'] == user]['User-ID'] is user):
+        print((userOutliers.loc[userOutliers['User-ID'] == user]['User-ID'] is user))
+        if user not in user_books:
+            user_books[user] = [data['ISBN'][i]]
+        else:
+            user_books[user].append(data['ISBN'][i])
+            
+            
+            ###userOutliers[userOutliers['zscore']>-3]
+'''
+
+#Similarity
+
+ratings_books = ratings.merge(books, on='ISBN')
+
+number_rating = ratings_books.groupby('Book-Title')['Book-Rating'].count().reset_index()
+
+number_rating.rename(columns= {'Book-Rating':'number_of_ratings'}, inplace=True)
+
+final_rating = ratings_books.merge(number_rating, on='Book-Title')
+
+final_rating = final_rating[final_rating['number_of_ratings'] >= 100]
+
+final_rating.drop_duplicates(['User-ID','Book-Title'], inplace=True)
+
+
+book_pivot = final_rating.pivot_table(columns='Book-Title', 
+                                       index='User-ID',
+                                       values='Book-Rating')
+book_pivot.fillna(0, inplace=True)
+#book_pivot = book_pivot.T
+
+#for user in range(0, book_pivot.shape[0]):
+#    for book in range(0,book_pivot.shape[1]):
+#        print(book_pivot.iloc[ user, col])
+
+
+
+def findKSimilar(r, k):
+    
+    # similarUsers is 2-D matrix
+    similarUsers=-1*np.ones((nUsers,k))
+    
+    similarities=cosine_similarity(r)
+       
+    # for each user
+    for i in range(0, nUsers):
+        simUsersIdxs= np.argsort(similarities[:,i])
+        
+        l=0
+        #find its most similar users    
+        for j in range(simUsersIdxs.size-2, simUsersIdxs.size-k-2,-1):
+            simUsersIdxs[-k+1:]
+            similarUsers[i,l]=simUsersIdxs[j]
+            l=l+1
+            
+    return similarUsers, similarities
+
+nNeighbours=2
+nUsers = len(book_pivot.iloc[ 0, :])
+
+similarUsers, similarities=findKSimilar(book_pivot.T, nNeighbours)
+
+
+
+
 
 
 '''
-#numRating['Avg_Num_Rating'] =
-# 1.book title, number of ratings
-num_ratings = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
-num_ratings.rename(columns = {'Book-Rating': 'Ratings'}, inplace=True)
+ratings_matrix = pd.pivot_table(ratings, values=["Book-Rating"], index=['User-ID', 'ISBN'])
 
-avg_ratings = data.groupby('Book-Title').mean()['Book-Rating'].reset_index()
-avg_ratings.rename(columns = {'Book-Rating': 'AvgRatings'}, inplace=True)
 
-popular_Book = num_ratings.merge(avg_ratings, on='Book-Title')
+#ratings_matrix.to_csv('user-pairs-books.data')
+
+#userId = ratings_matrix.index
+
+#ISBN = ratings_matrix.columns
+#ratings_matrix.shape
+
+def findKSimilar(r, k):
+    
+    # similarUsers is 2-D matrix
+    similarUsers=-1*np.ones((nUsers,k))
+    
+    similarities=cosine_similarity(r)
+       
+    # for each user
+    for i in range(0, nUsers):
+        simUsersIdxs= np.argsort(similarities[:,i])
+        
+        l=0
+        #find its most similar users    
+        for j in range(simUsersIdxs.size-2, simUsersIdxs.size-k-2,-1):
+            simUsersIdxs[-k+1:]
+            similarUsers[i,l]=simUsersIdxs[j]
+            l=l+1
+            
+    return similarUsers, similarities
+
+#ratings_matrix = ratings_matrix.fillna(0)
+nNeighbours=2
+nUsers = len(ratings_matrix.index)
+similarUsers, similarities=findKSimilar(ratings_matrix, nNeighbours)
+
+ratings_matrix
+
+#[ 96.,  94.]
 '''
-#popular_Book['zscore'] = ( popular_Book.AvgRatings - popular_Book.AvgRatings.mean() ) / popular_Book.AvgRatings.std()
 
 
-#popular_Book['zscore'] = popular_Book['zscore'] ** 2
 
-#popular_Book_no_outliers = popular_Book[(popular_Book.zscore > -3) & (popular_Book.zscore < 3)]
-#num_ratings[(num_ratings.zscore > 2) & (num_ratings.zscore <50)].sort_values('zscore').tail(30)
+
+
+
+
+
