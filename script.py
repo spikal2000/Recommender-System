@@ -10,6 +10,8 @@ import math
 import matplotlib
 from matplotlib import pyplot as plt
 from sklearn.metrics.pairwise import cosine_similarity
+
+from sklearn.neighbors import NearestNeighbors
 #dezcribe dataset, size
 #reverse order: the book popularity, the author popularity, and the age ranges by reading activity
 
@@ -110,21 +112,6 @@ print("\t\t--------------------------Q2_Recommender System----------------------
 print("\n\t\t\t\t******Find similarities Q2-a******\n")
 
 #{'User-ID': [books]}
-'''
-user_books = {}
-
-for i in range(1, len(data)):
-    user = data['User-ID'][i]
-    if (userOutliers.loc[userOutliers['User-ID'] == user]['User-ID'] is user):
-        print((userOutliers.loc[userOutliers['User-ID'] == user]['User-ID'] is user))
-        if user not in user_books:
-            user_books[user] = [data['ISBN'][i]]
-        else:
-            user_books[user].append(data['ISBN'][i])
-            
-            
-            ###userOutliers[userOutliers['zscore']>-3]
-'''
 
 #Similarity
 
@@ -141,19 +128,15 @@ final_rating = final_rating[final_rating['number_of_ratings'] >= 100]
 final_rating.drop_duplicates(['User-ID','Book-Title'], inplace=True)
 
 
-book_pivot = final_rating.pivot_table(columns='Book-Title', 
-                                       index='User-ID',
+book_pivot = final_rating.pivot_table(columns='User-ID', 
+                                       index='Book-Title',
                                        values='Book-Rating')
 book_pivot.fillna(0, inplace=True)
-#book_pivot = book_pivot.T
-
-#for user in range(0, book_pivot.shape[0]):
-#    for book in range(0,book_pivot.shape[1]):
-#        print(book_pivot.iloc[ user, col])
-
-
-
+#book_pivot = book_pivot
+'''
 def findKSimilar(r, k):
+    
+    
     
     # similarUsers is 2-D matrix
     similarUsers=-1*np.ones((nUsers,k))
@@ -172,57 +155,47 @@ def findKSimilar(r, k):
             l=l+1
             
     return similarUsers, similarities
+
 
 nNeighbours=2
 nUsers = len(book_pivot.iloc[ 0, :])
 
-similarUsers, similarities=findKSimilar(book_pivot.T, nNeighbours)
-
-
-
-
-
-
+similarUsers, similarities=findKSimilar(book_pivot, nNeighbours)
 '''
-ratings_matrix = pd.pivot_table(ratings, values=["Book-Rating"], index=['User-ID', 'ISBN'])
+nNeighbours=6
+
+#________________Recomender_______________
+from scipy.sparse import csr_matrix
+book_sparse=csr_matrix(book_pivot)
 
 
-#ratings_matrix.to_csv('user-pairs-books.data')
+from sklearn.neighbors import NearestNeighbors
+model=NearestNeighbors(metric = 'cosine', algorithm='brute') ## model
 
-#userId = ratings_matrix.index
+model.fit(book_sparse)
 
-#ISBN = ratings_matrix.columns
-#ratings_matrix.shape
+#book_pivot.iloc[237,:].values.reshape(1,-1)
 
-def findKSimilar(r, k):
+
+
+#recommended shit TODO: def to call 
+#distances => similarities, suggestions => kn
+distances,suggestions=model.kneighbors(book_pivot.iloc[54,:].values.reshape(1,-1))
+for i in range(len(suggestions)):
+    for k in range(len(book_pivot.index[suggestions[i]])):
+        print(book_pivot.index[suggestions[i]][k])
+
+
+#for user in range(0, book_pivot.shape[0]):
     
-    # similarUsers is 2-D matrix
-    similarUsers=-1*np.ones((nUsers,k))
+#    distances,suggestions=model.kneighbors(book_pivot.iloc[user,:].values.reshape(1,-1))
     
-    similarities=cosine_similarity(r)
-       
-    # for each user
-    for i in range(0, nUsers):
-        simUsersIdxs= np.argsort(similarities[:,i])
-        
-        l=0
-        #find its most similar users    
-        for j in range(simUsersIdxs.size-2, simUsersIdxs.size-k-2,-1):
-            simUsersIdxs[-k+1:]
-            similarUsers[i,l]=simUsersIdxs[j]
-            l=l+1
-            
-    return similarUsers, similarities
+    
 
-#ratings_matrix = ratings_matrix.fillna(0)
-nNeighbours=2
-nUsers = len(ratings_matrix.index)
-similarUsers, similarities=findKSimilar(ratings_matrix, nNeighbours)
 
-ratings_matrix
 
-#[ 96.,  94.]
-'''
+
+
 
 
 
