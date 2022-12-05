@@ -340,7 +340,7 @@ mae, rmse, precision, recall = maeRmse(book_array, similarUsers, similarities)
 
 if precision !=0 and recall !=0:
     f1=2*precision*recall/(precision+recall)
-    print ('F1=',f1)
+    print ('\nF1=',f1)
 
 
 
