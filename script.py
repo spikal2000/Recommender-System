@@ -296,8 +296,11 @@ def predict(userId, itemId, data,similarUsers,similarities):
         #weighted sum
         sum= sum+ data[itemId,neighbor]*similarities[neighbor,userId]
         simSum = simSum + similarities[neighbor,userId]
-    
-    return  sum/simSum
+        if simSum != 0:
+            return sum/simSum
+        else:
+            return 0 
+    #return  sum/simSum
 
 book_array = np.array(book_pivot.T)
 hideUserID = 10
