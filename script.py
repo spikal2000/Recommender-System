@@ -10,6 +10,9 @@ import math
 import matplotlib
 from matplotlib import pyplot as plt
 from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
+from scipy import stats
+import plotly.express as px
 
 from sklearn.neighbors import NearestNeighbors
 #dezcribe dataset, size
@@ -125,118 +128,66 @@ user_rating_count.rename(columns={'index':'User-ID', 'User-ID': 'count'}, inplac
 # a small number of users have rated a large amount of books
 
 ratings_name = ratings.merge(books, on='ISBN')
+#-----------------------------------OUTLIER--ZSCORE
+#books-outlier
 
+#plt.style.use('ggplot')
+ratings_name['Books-Count'] = ratings_name.groupby('Book-Title')['Book-Title'].transform('count')
+ratings_name.hist('Books-Count',bins=30)
+ratings_name['z-score-books'] = np.abs(stats.zscore(ratings_name['Books-Count']))
+ratings_name = ratings_name[ratings_name['z-score-books'] > 0.5 ]
+#ratings_name.hist('Books-Count',bins=4)
+
+#Author-Outlier
+ratings_name['Author-count'] = ratings_name.groupby('Book-Author')['Book-Author'].transform('count')
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name['z-score-Author'] = np.abs(stats.zscore(ratings_name['Author-count']))
+ratings_name = ratings_name[ratings_name['z-score-Author'] > 0.3 ]
+# final_ratings.hist('Author-Count',bins=4)
+
+#Users-Ouoliers
+ratings_name['User-count'] = ratings_name.groupby('User-ID')['User-ID'].transform('count')
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name['z-score-User'] = np.abs(stats.zscore(ratings_name['User-count']))
+ratings_name = ratings_name[ratings_name['z-score-User'] > 0.2 ]
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name.hist('Books-Count',bins=30)
 
 #____________COLABORATIVE FILTERING______________
 
 #select users who have rated more than 200 books
-x = ratings_name.groupby('User-ID').count()['Book-Rating'] > 200
+x = ratings_name.groupby('User-ID').count()['Book-Rating'] >= 68
 #x[x] => returns all the true .index gives the users
 wellread_users = x[x].index
-print('there are only', wellread_users.shape, 'who have read more than 200 books')
+print('there are only', wellread_users.shape, 'who have read more than 50 books')
 
 #filtering entres from ratings_name only rated by users in wellread_users
 filtering_rating = ratings_name[ratings_name['User-ID'].isin(wellread_users)]
 #----------
 #selectiong the books that have more than 40 ratings 
-y = filtering_rating.groupby('Book-Title').count()['Book-Rating']>=40
+y = filtering_rating.groupby('Book-Title').count()['Book-Rating'] >=49
 
 famous_books = y[y].index
 
 final_ratings = filtering_rating[filtering_rating['Book-Title'].isin(famous_books)]
-
+#print('finalRating: ', final_ratings.shape)
 #making pivot table
 book_pivot = final_ratings.pivot_table(index='User-ID', 
                                        columns='Book-Title', 
                                        values='Book-Rating')
 #replace nan values
 book_pivot.fillna(0,inplace=True)
+#-----------------------------------OUTLIER--ZSCORE----------------------------
+
+# kn_df = pd.DataFrame({'User_ID': kn.keys(),'kn': kn.values()})
+
+# #______Find similarities______
+# #Extract similarities_df to csv 
+# similarities_df.to_csv('user-pairs-books.data', index = False)
+# #Extract kn_df to json file    
+# kn_df.to_json('neighbors-k-books.json', orient = 'split', index = False)
 
 
-
-'''
-#_________________________OLd way 
-#Similarity
-
-ratings_books = ratings.merge(books, on='ISBN')
-
-number_rating = ratings_books.groupby('Book-Title')['Book-Rating'].count().reset_index()
-
-number_rating.rename(columns= {'Book-Rating':'number_of_ratings'}, inplace=True)
-
-final_rating = ratings_books.merge(number_rating, on='Book-Title')
-
-final_rating = final_rating[final_rating['number_of_ratings'] >= 100]
-
-final_rating.drop_duplicates(['User-ID','Book-Title'], inplace=True)
-
-#final_rating_df = pd.DataFrame(np.random.randn(8, 4),index=[User-ID], columns=['A', 'B', 'C', 'D'])
-
-
-book_pivot = final_rating.pivot_table(columns='User-ID', 
-                                       index='Book-Title',
-                                       values='Book-Rating')
-book_pivot.fillna(0, inplace=True)
-#book_pivot = book_pivot
-'''
-#___________________________________
-
-
-#________________Recomender_______________
-'''
-from scipy.sparse import csr_matrix
-book_sparse=csr_matrix(book_pivot)
-
-
-from sklearn.neighbors import NearestNeighbors
-model=NearestNeighbors(metric = 'cosine', algorithm='brute', n_neighbors=3) ## model
-
-model.fit(book_sparse)
-
-#book_pivot.iloc[237,:].values.reshape(1,-1)
-
-'''
-'''
-#IMPORTANT CHECK THIS FOR SUGGESTIONS
-User = 54
-
-#recommended shit TODO: def to call 
-#distances => similarities, suggestions => kn
-distances,suggestions=model.kneighbors(book_pivot.iloc[User,:].values.reshape(1,-1))
-for i in range(len(suggestions)):
-    for k in range(len(book_pivot.index[suggestions[i]])):
-        print(book_pivot.index[suggestions[i]][k])
-'''
-'''
-
-#find kn, similarities
-userids = book_pivot.columns.tolist()
-sim = []
-kn = {}
-for user in range(0, book_pivot.shape[1]):
-    distances,suggestions=model.kneighbors(book_pivot.iloc[user,:].values.reshape(1,-1))
-    for l in distances:
-        sim.append(l.tolist())
-    for s in suggestions:
-        for user in userids:
-           if user in kn:
-               continue
-           else:
-               kn[user] = s.tolist()
-               break
-    
-similarities_df = pd.DataFrame({'similarities': sim})
-
-
-kn_df = pd.DataFrame({'User_ID': kn.keys(),'kn': kn.values()})
-
-#______Find similarities______
-#Extract similarities_df to csv 
-similarities_df.to_csv('user-pairs-books.data', index = False)
-#Extract kn_df to json file    
-kn_df.to_json('neighbors-k-books.json', orient = 'split', index = False)
-
-'''
 #-----------____-------____---______----______---_____--______-
 
 def findKSimilar (r, k):
@@ -258,7 +209,7 @@ def findKSimilar (r, k):
             l=l+1
             
     return similarUsers, similarities
-nNeighbours=5
+nNeighbours=7
 nUsers = book_pivot.shape[0]
 similarUsers, similarities=findKSimilar (book_pivot, nNeighbours)
 #//similarities, similarUsers
@@ -294,13 +245,10 @@ def predict(userId, itemId, data,similarUsers,similarities):
     for l in range(0,nCols):    
         neighbor=int(similarUsers[userId, l])
         #weighted sum
-        sum= sum+ data[itemId,neighbor]*similarities[neighbor,userId]
-        simSum = simSum + similarities[neighbor,userId]
-        if simSum != 0:
-            return sum/simSum
-        else:
-            return 0 
-    #return  sum/simSum
+        sum= sum+ data[itemId,neighbor]*similarities[userId,neighbor]
+        simSum = simSum + similarities[userId,neighbor]
+        
+    return  (sum/simSum)
 
 book_array = np.array(book_pivot.T)
 hideUserID = 10
@@ -308,7 +256,7 @@ hideItemID = 2
 #prediction=predict(hideUserID,hideItemID,book_array, similarUsers, similarities)
 #print ('prediction:',prediction, 'real:',book_pivot.iloc[hideUserID,hideItemID])
 
-def maeRmse(r, similarUsers, similarities):
+def maeRmsePrecisionRecall(r, similarUsers, similarities):
     predicted_values = []
     tp=fn=fp=fn=0
     for userId in range(0,r.shape[1]):
@@ -339,11 +287,60 @@ def maeRmse(r, similarUsers, similarities):
     return mae, rmse, precision, recall
 
 #get mae, rmse, precision, recall
-mae, rmse, precision, recall = maeRmse(book_array, similarUsers, similarities)
+mae, rmse, precision, recall = maeRmsePrecisionRecall(book_array, similarUsers, similarities)
 
 if precision !=0 and recall !=0:
     f1=2*precision*recall/(precision+recall)
     print ('\nF1=',f1)
+
+
+#------------------------------------Outliers Section-----------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
