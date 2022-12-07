@@ -73,12 +73,6 @@ print(ageRanges)
 #----------------------------------------------------------------------------------------------------------------------------------------
 print("\t\t--------------------------Q1_Outlier detection I--------------------------")
 
-#Function to calculate zscore
-def zscore(nums):
-    z = ( nums - nums.mean() ) / nums.std()
-    return z
-
-
 #Books-Popularity Outliers
 num_ratings_books = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
 num_ratings_books.rename(columns = {'Book-Rating': 'numRatings'}, inplace=True)
@@ -89,26 +83,6 @@ booksOutliers = num_ratings_books[(num_ratings_books.zscore > -3) & (num_ratings
 print("\n\t\t\t\t******Books-Popularity Outliers(sorted) Q1******\n")
 print(booksOutliers.sort_values('zscore'))
 
-
-#Authors-Popularity Outliers
-num_ratings_authors = data.groupby('Book-Author').count()['Book-Rating'].reset_index()
-num_ratings_authors.rename(columns = {'Book-Rating': 'numRatings'}, inplace=True)
-#apply zscore: z = (x-μ)/σ
-#num_ratings_authors['zscore'] = ( num_ratings_authors.Ratings - num_ratings_authors.Ratings.mean() ) / num_ratings_authors.Ratings.std()
-num_ratings_authors['zscore'] = zscore(num_ratings_authors.numRatings)
-authorOutliers = num_ratings_authors[(num_ratings_authors.zscore > -3) & (num_ratings_authors.zscore < 3)]
-print("\n\t\t\t\t******Authors-Popularity Outliers(sorted) Q1******\n")
-print(authorOutliers.sort_values('zscore'))
-
-
-#USer-IDs Books Outliers
-num_ratings_user = data.groupby('User-ID').count()['ISBN'].reset_index()
-num_ratings_user.rename(columns = {'ISBN': 'numISBN'}, inplace=True)
-#apply zscore: z = (x-μ)/σ
-num_ratings_user['zscore'] = zscore(num_ratings_user.numISBN)
-userOutliers = num_ratings_user[(num_ratings_user.zscore > -3) & (num_ratings_user.zscore < 3)]
-print("\n\t\t\t\t******Users-Number of ISBN Outliers(sorted) Q1******\n")
-print(userOutliers.sort_values('zscore'))
 '''
 #-----------------------------------------------------------------------------------------------------------------------
 print("\t\t--------------------------Q2_Recommender System--------------------------")
@@ -127,15 +101,15 @@ user_rating_count = pd.DataFrame(ratings['User-ID'].value_counts().reset_index()
 user_rating_count.rename(columns={'index':'User-ID', 'User-ID': 'count'}, inplace=True)
 # a small number of users have rated a large amount of books
 
-ratings_name = ratings.merge(books, on='ISBN')
+
 #-----------------------------------OUTLIER--ZSCORE
 #books-outlier
-
+ratings_name = ratings.merge(books, on='ISBN')
 #plt.style.use('ggplot')
 ratings_name['Books-Count'] = ratings_name.groupby('Book-Title')['Book-Title'].transform('count')
 ratings_name.hist('Books-Count',bins=30)
 ratings_name['z-score-books'] = np.abs(stats.zscore(ratings_name['Books-Count']))
-ratings_name = ratings_name[ratings_name['z-score-books'] > 0.5 ]
+ratings_name = ratings_name[ratings_name['z-score-books'] > 0.48 ]
 #ratings_name.hist('Books-Count',bins=4)
 
 #Author-Outlier
@@ -159,13 +133,13 @@ ratings_name.hist('Books-Count',bins=30)
 x = ratings_name.groupby('User-ID').count()['Book-Rating'] >= 68
 #x[x] => returns all the true .index gives the users
 wellread_users = x[x].index
-print('there are only', wellread_users.shape, 'who have read more than 50 books')
+print('there are only', wellread_users.shape, 'who have read more than 68 books')
 
 #filtering entres from ratings_name only rated by users in wellread_users
 filtering_rating = ratings_name[ratings_name['User-ID'].isin(wellread_users)]
 #----------
 #selectiong the books that have more than 40 ratings 
-y = filtering_rating.groupby('Book-Title').count()['Book-Rating'] >=49
+y = filtering_rating.groupby('Book-Title').count()['Book-Rating'] >=40
 
 famous_books = y[y].index
 
@@ -184,13 +158,12 @@ book_pivot.fillna(0,inplace=True)
 # #______Find similarities______
 # #Extract similarities_df to csv 
 # similarities_df.to_csv('user-pairs-books.data', index = False)
-# #Extract kn_df to json file    
-# kn_df.to_json('neighbors-k-books.json', orient = 'split', index = False)
+
 
 
 #-----------____-------____---______----______---_____--______-
 
-def findKSimilar (r, k):
+def findKSimilar_users (r, k):
         
     # similarUsers is 2-D matrix
     similarUsers=-1*np.ones((nUsers,k))
@@ -211,25 +184,53 @@ def findKSimilar (r, k):
     return similarUsers, similarities
 nNeighbours=7
 nUsers = book_pivot.shape[0]
-similarUsers, similarities=findKSimilar (book_pivot, nNeighbours)
+similarUsers, similarities=findKSimilar_users (book_pivot, nNeighbours)
+
+
+
+
+similarUsers_index =  {}
+for i, user in enumerate(similarUsers):
+    similarUsers_index[i] = user
+similarUsers_index_df = pd.DataFrame({'User_ID': similarUsers_index.keys(),'kn': similarUsers_index.values()})
+#Extract kn_df to json file    
+similarUsers_index_df.to_json('neighbors-k-books.json', orient = 'split', index = False)   
+similarities_df = pd.DataFrame(similarities)
+similarities_df.to_csv('user-pairs-books.data', index = False)
+
+
+
+
 #//similarities, similarUsers
 #-----------____-------____---______----______---_____--______-
-
+# similarItems, similarities=findKSimilar (book_pivot.T, nNeighbours)
 #recommened books for the active user
+# final_ratings['User-ID'] == '278418'
+# book_pivot.index[active_similarUsers]
 
-def get_recommended_books(active_user):
+# book_pivot[book_pivot.index == '100459']
+
+# similarity_scores = cosine_similarity(book_pivot.T)
+#user, book brings all the books of the user
+# book_pivot.iloc[138,:]
+def get_recommended_books(active_user): 
     active_similarUsers = similarUsers[active_user]
     active_similarUsers = active_similarUsers.astype(int)
+    ids = book_pivot.index[active_similarUsers]
     data = []
-    for k in range(len(book_pivot.columns[active_similarUsers])):
-        data.append(book_pivot.columns[active_similarUsers][k])
-        
-    print('\nThe recommened books for the user', active_user, "are:\n")
-    for i, book in enumerate(data):
-        print(i+1, book)
+    for _id in ids:
+        temp = final_ratings[final_ratings['User-ID'] == _id][['Book-Title', 'Book-Rating' ]]
+        book = temp[temp['Book-Rating'] == temp['Book-Rating'].max()]['Book-Title'].values[0]
+        # book = list(book)
+        data.append(book)
+    data = set(data)
+    data = list(data)
+    for i, b in enumerate(data):
+        print(i, b)
+# for activeUser in active_similarUsers:
+    
 
-active_user = 54
-get_recommended_books(active_user)
+
 
 #-----------------------------------------------------/recomendersystem
 #-------------------------RMSE
@@ -247,14 +248,32 @@ def predict(userId, itemId, data,similarUsers,similarities):
         #weighted sum
         sum= sum+ data[itemId,neighbor]*similarities[userId,neighbor]
         simSum = simSum + similarities[userId,neighbor]
-        
-    return  (sum/simSum)
+    if simSum <=0:
+        return 0 
+    else:
+        return  (sum/simSum)
 
 book_array = np.array(book_pivot.T)
 hideUserID = 10
 hideItemID = 2
 #prediction=predict(hideUserID,hideItemID,book_array, similarUsers, similarities)
 #print ('prediction:',prediction, 'real:',book_pivot.iloc[hideUserID,hideItemID])
+
+matrix = pd.DataFrame(book_pivot)
+def get_recommended_books(active_user, k):
+    predictions_book = {}
+    
+    for i in range(0,book_pivot.shape[1]):
+        predictions_book[matrix.columns[i]] = predict(active_user,i,book_array, similarUsers, similarities)
+    
+    list_p = sorted(predictions_book.items(), key=lambda x:x[1], reverse = True)
+    for j in range(0,k):
+        print(j, list_p[j][0], float(predictions_book[list_p[j][0]]))
+        
+active_user = 100
+
+get_recommended_books(active_user, 5)    
+                
 
 def maeRmsePrecisionRecall(r, similarUsers, similarities):
     predicted_values = []
