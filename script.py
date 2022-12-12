@@ -13,7 +13,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 from scipy import stats
 import plotly.express as px
-
+from scipy.stats import kendalltau
+from sklearn.decomposition import TruncatedSVD
 from sklearn.neighbors import NearestNeighbors
 #dezcribe dataset, size
 #reverse order: the book popularity, the author popularity, and the age ranges by reading activity
@@ -268,8 +269,10 @@ def get_recommended_books(active_user, k):
     
     list_p = sorted(predictions_book.items(), key=lambda x:x[1], reverse = True)
     for j in range(0,k):
-        print(j, list_p[j][0], float(predictions_book[list_p[j][0]]))
-        
+        print(j+1, list_p[j][0], float(predictions_book[list_p[j][0]]))
+
+
+
 active_user = 100
 
 get_recommended_books(active_user, 5)    
@@ -313,39 +316,29 @@ if precision !=0 and recall !=0:
     print ('\nF1=',f1)
 
 
-#------------------------------------Outliers Section-----------------------------------------
+#------------------------------------Matrix Factorization Recommender-----------------------------------------
+
+def mf_find_similar_users(matrix, k):
+    
+    mf_similarUsers = -1*np.ones((nUsers, k))
+    SVD=TruncatedSVD(n_components=12, random_state=17)
+    matrixx = SVD.fit_transform(matrix)
+    mf_corr = corr=np.corrcoef(matrixx)
+    
+    for i in range(0, nUsers):
+        simUsersIdxs= np.argsort(mf_corr[:,i])
+        
+        l=0
+        #find its most similar users    
+        for j in range(simUsersIdxs.size-2, simUsersIdxs.size-k-2,-1):
+            simUsersIdxs[-k+1:]
+            mf_similarUsers[i,l]=simUsersIdxs[j]
+            l=l+1
+            
+    return mf_similarUsers, mf_corr
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+mf_similarUsers, mf_corr = mf_find_similar_users(book_pivot, 7)
 
 
 

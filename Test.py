@@ -1,43 +1,92 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun Dec  4 15:55:34 2022
-
-@author: spika
-"""
-
-# -*- coding: utf-8 -*-
-"""
 Created on Sat Nov 12 11:23:02 2022
 
 """
-import numpy as np
+import re
 import pandas as pd
+import numpy as np
+import math
+import matplotlib
+from matplotlib import pyplot as plt
+from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
+from scipy import stats
+import plotly.express as px
+
+from sklearn.neighbors import NearestNeighbors
 #dezcribe dataset, size
 #reverse order: the book popularity, the author popularity, and the age ranges by reading activity
 
-books = pd.read_csv("data\BX-Books-TEMP.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip')
-#dtype={'ISBN': 'str', 'Book-Title': 'str', "Book-Author": 'str',"Year-Of-Publication": 'str',"Publisher": 'str',"Image-URL-S": 'str',"Image-URL-M": 'str',"Image-URL-L": 'str'})
-users = pd.read_csv("data\BX-Users-TEMP.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip')
-                    #dtype={"User-ID": 'str', "Location": 'str', "Age": 'str'})
-ratings = pd.read_csv("data\BX-Book-Ratings-TEMP.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip')
-                      #dtype={"User-ID": 'str',"ISBN":'str',"Book-Rating":'int'})
+books = pd.read_csv("data\BX-Books.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip', 
+dtype={'ISBN': 'str', 'Book-Title': 'str', "Book-Author": 'str',"Year-Of-Publication": 'str',"Publisher": 'str',"Image-URL-S": 'str',"Image-URL-M": 'str',"Image-URL-L": 'str'})
+users = pd.read_csv("data\BX-Users.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip', 
+                    dtype={"User-ID": 'str', "Location": 'str', "Age": 'str'})
+ratings = pd.read_csv("data\BX-Book-Ratings.csv", encoding='ISO-8859-1', sep=";", on_bad_lines='skip',
+                      dtype={"User-ID": 'str',"ISBN":'str',"Book-Rating":'int'})
 
-#Checking the dataset for null and duplicates
+#BX-Book-Ratings.csv
+df =  pd.merge(ratings, users)
+data = pd.merge(df, books)
+data = data.head(100000)
+#Drop all nan values
+data.dropna(inplace=True)
+#delete random book values '~' => remove
+#data['Book-Title'].loc[~data['Book-Title'].str.contains('\?', flags=re.I, regex=True)]
+#data.drop(data[data['Book-Title'].str.contains('?')], inplace = True)
+#convert Ages to int
+data['Age'] = data['Age'].astype('int')
+data = data.reset_index()
+#data1 = data.head()
+print("\t\t---------------------------------DataInfo---------------------------------")
+print('Data Size: ', data.size)# contains info from all the tables
+print('Data Shape: ', data.shape)
+print('_____Data Describe_____')
+print(data.describe())
+print('_____Number of Books_____')
+print(data['Book-Author'].nunique())
+print('_____Number of Readers_____')
+print(data["User-ID"].nunique())
+#csvframe.info(memory_usage='deep')
+#data['Book-Rating'].unique()
+#Out[59]: array([ 5,  0,  8,  9,  6,  7,  4,  3, 10,  1,  2])
+print("\t\t---------------------------------Q1---------------------------------")
+print("\n\t\t\t\t******Reverse order Book Popularity Q1-a******\n")
+print(data["Book-Title"].value_counts().sort_values())
+print("\n\t\t\t\t******Reverse order Author Popularity Q1-b******\n")
+print(data["Book-Author"].value_counts().sort_values())
 
-#books, users, ratings that have null
-print(books.isnull().sum())
-print(users.isnull().sum())
-print(ratings.isnull().sum())
+#babies = 0-2
+#children = 3-12
+#teens = 13-18
+#young adults = 19-30
+#Middle-aged adults = 31-45
+#old Adults = 46-pano
 
-#checking duplicated b=values in the dataset 
-print(books.duplicated().sum())
-print(users.duplicated().sum())
-print(ratings.duplicated().sum())
+print("\n\t\t\t\t******Age ranges by reading activity Q1-c******\n")
 
-#Data analysis
-print('we have', books['Book-Title'].count(), 'books in our dataset')
-print('and', books['Book-Title'].nunique(), 'of them are unique')
+ageRanges = pd.DataFrame({'Age': data['Age']})
+ranges = [0, 2, 12, 18, 30, 45, 500]
+ageRanges = ageRanges.groupby(pd.cut(ageRanges.Age, ranges)).count()
+print(ageRanges)
+'''
+#----------------------------------------------------------------------------------------------------------------------------------------
+print("\t\t--------------------------Q1_Outlier detection I--------------------------")
 
+#Books-Popularity Outliers
+num_ratings_books = data.groupby('Book-Title').count()['Book-Rating'].reset_index()
+num_ratings_books.rename(columns = {'Book-Rating': 'numRatings'}, inplace=True)
+#apply zscore: z = (x-μ)/σ
+#num_ratings_books['zscore'] = ( num_ratings_books.Ratings - num_ratings_books.Ratings.mean() ) / num_ratings_books.Ratings.std()
+num_ratings_books['zscore'] = zscore(num_ratings_books.numRatings)
+booksOutliers = num_ratings_books[(num_ratings_books.zscore > -3) & (num_ratings_books.zscore < 3)]
+print("\n\t\t\t\t******Books-Popularity Outliers(sorted) Q1******\n")
+print(booksOutliers.sort_values('zscore'))
+
+'''
+#-----------------------------------------------------------------------------------------------------------------------
+print("\t\t--------------------------Q2_Recommender System--------------------------")
+print("\n\t\t\t\t******Find similarities Q2-a******\n")
 
 #Checking the number of occurances for all the books 
 book_count = pd.DataFrame(books['Book-Title'].value_counts().reset_index())
@@ -52,49 +101,74 @@ user_rating_count = pd.DataFrame(ratings['User-ID'].value_counts().reset_index()
 user_rating_count.rename(columns={'index':'User-ID', 'User-ID': 'count'}, inplace=True)
 # a small number of users have rated a large amount of books
 
-ratings_name = ratings.merge(books, on='ISBN')
 
+#-----------------------------------OUTLIER--ZSCORE
+#books-outlier
+ratings_name = ratings.merge(books, on='ISBN')
+#plt.style.use('ggplot')
+ratings_name['Books-Count'] = ratings_name.groupby('Book-Title')['Book-Title'].transform('count')
+ratings_name.hist('Books-Count',bins=30)
+ratings_name['z-score-books'] = np.abs(stats.zscore(ratings_name['Books-Count']))
+ratings_name = ratings_name[ratings_name['z-score-books'] > 0.48 ]
+#ratings_name.hist('Books-Count',bins=4)
+
+#Author-Outlier
+ratings_name['Author-count'] = ratings_name.groupby('Book-Author')['Book-Author'].transform('count')
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name['z-score-Author'] = np.abs(stats.zscore(ratings_name['Author-count']))
+ratings_name = ratings_name[ratings_name['z-score-Author'] > 0.3 ]
+# final_ratings.hist('Author-Count',bins=4)
+
+#Users-Ouoliers
+ratings_name['User-count'] = ratings_name.groupby('User-ID')['User-ID'].transform('count')
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name['z-score-User'] = np.abs(stats.zscore(ratings_name['User-count']))
+ratings_name = ratings_name[ratings_name['z-score-User'] > 0.2 ]
+# final_ratings.hist('Author-Count',bins=4)
+ratings_name.hist('Books-Count',bins=30)
 
 #____________COLABORATIVE FILTERING______________
-'''
+
 #select users who have rated more than 200 books
-x = ratings_name.groupby('User-ID').count()['Book-Rating'] > 200
+x = ratings_name.groupby('User-ID').count()['Book-Rating'] >= 80
 #x[x] => returns all the true .index gives the users
 wellread_users = x[x].index
-print('there are only', wellread_users.shape, 'who have read more than 200 books')
+print('there are only', wellread_users.shape, 'who have read more than 50 books')
 
 #filtering entres from ratings_name only rated by users in wellread_users
 filtering_rating = ratings_name[ratings_name['User-ID'].isin(wellread_users)]
 #----------
 #selectiong the books that have more than 40 ratings 
-y = filtering_rating.groupby('Book-Title').count()['Book-Rating']>=40
+y = filtering_rating.groupby('Book-Title').count()['Book-Rating'] >=68
 
 famous_books = y[y].index
 
 final_ratings = filtering_rating[filtering_rating['Book-Title'].isin(famous_books)]
-
+#print('finalRating: ', final_ratings.shape)
 #making pivot table
-book_pivot = final_ratings.pivot_table(index='Book-Title', 
-                                       columns='User-ID', 
+book_pivot = final_ratings.pivot_table(index='User-ID', 
+                                       columns='Book-Title', 
                                        values='Book-Rating')
 #replace nan values
 book_pivot.fillna(0,inplace=True)
-'''
-books_names = ratings.merge(books, on='ISBN')
-book_pivot = books_names.pivot_table(index='User-ID', 
-                                       columns='Book-Title', 
-                                       values='Book-Rating')
-book_pivot.fillna(0,inplace=True)
-#SIMILARITIES
-from sklearn.metrics.pairwise import cosine_similarity
+#-----------------------------------OUTLIER--ZSCORE----------------------------
 
-#similarity_score = cosine_similarity(book_pivot)
-def findKSimilar (book, k):
-    nUsers = book_pivot.shape[0]
+# kn_df = pd.DataFrame({'User_ID': kn.keys(),'kn': kn.values()})
+
+# #______Find similarities______
+# #Extract similarities_df to csv 
+# similarities_df.to_csv('user-pairs-books.data', index = False)
+
+
+
+#-----------____-------____---______----______---_____--______-
+
+def findKSimilar_users (r, k):
+        
     # similarUsers is 2-D matrix
     similarUsers=-1*np.ones((nUsers,k))
     
-    similarities=cosine_similarity(book)
+    similarities=cosine_similarity(r)
        
     # for each user
     for i in range(0, nUsers):
@@ -108,68 +182,55 @@ def findKSimilar (book, k):
             l=l+1
             
     return similarUsers, similarities
-book_array = np.array(book_pivot)
-nNeighbours = 2
-similarUsers, similarities=findKSimilar (book_array, nNeighbours)
-'''
-book_similarities = pd.DataFrame(similarities, index=book_pivot.index, columns=book_pivot.index)
-def get_similar_movies(movie_name, user_rating):
-   
-    similar_score = book_similarities[movie_name] * user_rating
-    similar_score = similar_score.sort_values(ascending=False)
-    return similar_score
+nNeighbours=5
+nUsers = book_pivot.shape[0]
+similarUsers, similarities=findKSimilar_users (book_pivot, nNeighbours)
 
-use1 = [('24 Hours', 2), ('1984', 8)]
-similar_scores = pd.DataFrame()
-for movie, rating in use1:
-    similar_scores = similar_scores.append(get_similar_movies(movie, rating), ignore_index=True)
 
-similar_scores.sum().sort_values(ascending=False).head(10)
-'''
 
-'''
-#function that recommends books
-def recommend(book_name):
-    
-    #index fetch
-    kn = 6
-    index = np.where(book_pivot.index == book_name)[0][0]
-    similar_items = sorted(list(enumerate(similarities[index])), key=lambda x:x[1], reverse=True )[1:kn]
-    
+
+similarUsers_index =  {}
+for i, user in enumerate(similarUsers):
+    similarUsers_index[i] = user
+similarUsers_index_df = pd.DataFrame({'User_ID': similarUsers_index.keys(),'kn': similarUsers_index.values()})
+#Extract kn_df to json file    
+similarUsers_index_df.to_json('neighbors-k-books.json', orient = 'split', index = False)   
+similarities_df = pd.DataFrame(similarities)
+similarities_df.to_csv('user-pairs-books.data', index = False)
+
+
+
+
+#//similarities, similarUsers
+#-----------____-------____---______----______---_____--______-
+# similarItems, similarities=findKSimilar (book_pivot.T, nNeighbours)
+#recommened books for the active user
+# final_ratings['User-ID'] == '278418'
+# book_pivot.index[active_similarUsers]
+
+# book_pivot[book_pivot.index == '100459']
+
+# similarity_scores = cosine_similarity(book_pivot.T)
+#user, book brings all the books of the user
+# book_pivot.iloc[138,:]
+def get_recommended_books(active_user): 
+    active_similarUsers = similarUsers[active_user]
+    active_similarUsers = active_similarUsers.astype(int)
+    ids = book_pivot.index[active_similarUsers]
     data = []
-    for i in similar_items:
-        item = []
-        #books where booktitles are equal to the name of similaritem
-        temp_df = books[books['Book-Title'] == book_pivot.index[i[0]]]
-        item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Title'].values))
-        item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Author'].values))
-        
-        
-        data.append(item)
-        
-    return(data)
- ''' 
- 
-'''
-#index fetch
-kn = 6
-user_id = '24 Hours'
-index = np.where(book_pivot.index == book_name)[0][0]
-similar_items = sorted(list(enumerate(similarities[index])), key=lambda x:x[1], reverse=True )[1:kn]
-#array of float
-similar_users = similarUsers[index] 
-data = []
-for i in similar_items:
-    item = []
-    #books where booktitles are equal to the name of similaritem
-    temp_df = books[books['Book-Title'] == book_pivot.index[i[0]]]
-    item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Title'].values))
-    item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Author'].values))
-    
-    
-    data.append(item)
-'''   
-    
+    for _id in ids:
+        temp = final_ratings[final_ratings['User-ID'] == _id][['Book-Title', 'Book-Rating' ]]
+        book = temp[temp['Book-Rating'] == temp['Book-Rating'].max()]['Book-Title'].values[0]
+        # book = list(book)
+        data.append(book)
+    data = set(data)
+    data = list(data)
+    for i, b in enumerate(data):
+        print(i, b)
+
+#-----------------------------------------------------/recomendersystem
+#-------------------------RMSE
+#print('\n------------------prediction time btcs------------------')
 def predict(userId, itemId, data,similarUsers,similarities):
 
     # number of neighbours to consider
@@ -181,55 +242,136 @@ def predict(userId, itemId, data,similarUsers,similarities):
     for l in range(0,nCols):    
         neighbor=int(similarUsers[userId, l])
         #weighted sum
-        sum= sum+ data[neighbor,itemId]*similarities[neighbor,userId]
-        simSum = simSum + similarities[neighbor,userId]
-    
-    return  sum/simSum
+        sum= sum+ data[itemId,neighbor]*similarities[userId,neighbor]
+        simSum = simSum + similarities[userId,neighbor]
+        if simSum <=0 :
+            return 0
+        else:
+            return  (sum/simSum)
 
-book_array = np.array(book_pivot)
-#hide smthing from book array
-prediction=predict(0,2,book_array, similarUsers, similarities)
-print ('prediction, real',prediction, book_array[0,2])
+book_array = np.array(book_pivot.T)
+# hideUserID = 10
+# hideItemID = 2
+#prediction=predict(hideUserID,hideItemID,book_array, similarUsers, similarities)
+#print ('prediction:',prediction, 'real:',book_pivot.iloc[hideUserID,hideItemID])
+# predicted values
 
-#to find the books to recommend
-user_to_recommend = 0
-#number of books to recommend
-recom_books = 2
-data={}
-for i in range(0,similarUsers.shape[1]):
+matrix = pd.DataFrame(book_pivot)
+def get_recommended_books(active_user, k):
+    predictions_book = {}
     
-    #temp.append(sorted(enumerate(similarities[int(similarUsers[user_to_recommend][i])]), reverse=True)[1:recom_books+1])
-    user = int(similarUsers[user_to_recommend][i])
-    print(user)
-    data[user] = (sorted(list(similarities[user]), reverse=True)[1:recom_books+1])
+    for i in range(0,book_pivot.shape[1]):
+        predictions_book[matrix.columns[i]] = predict(active_user,i,book_array, similarUsers, similarities)
     
-data_final=[]
-for i in data:
-    item = []
-    #books where booktitles are equal to the name of similaritem
-    temp_df = books[books['Book-Title'] == book_pivot.index[i[0]]]
-    item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Title'].values))
-    item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Author'].values))
+    list_p = sorted(predictions_book.items(), key=lambda x:x[1], reverse = True)
+    for j in range(0,k):
+        print(j, list_p[j][0], predictions_book[list_p[j][0]])
+        
+    
+                
+                
+active_user = 100
 
-    data_final.append(item)
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+get_recommended_books(active_user, 5)
+
+
+
+def maeRmsePrecisionRecall(r, similarUsers, similarities):
+    predicted_values = []
+    tp=fn=fp=fn=0
+    for userId in range(0,r.shape[1]):
+        for itemId in range(0,r.shape[0]):
+            predicted_values.append(predict(userId,itemId,r, similarUsers, similarities))
+            #predict recall
+            rhat = predict(userId,itemId,r, similarUsers, similarities)
+            #print(j, rhat)
+            if rhat>=3 and r[itemId,userId]>=3:
+                tp=tp+1
+            elif rhat>=3 and r[itemId,userId]<3:
+                fp = fp+1
+            elif rhat<3 and r[itemId,userId]>=3:
+                fn=fn+1
+                
+    predicted_values =  pd.Series(predicted_values, dtype=object).fillna(0).tolist()
+    realValues = r.flatten()
+    mae = 0
+    rmse = 0
+    for i in range(0,len(realValues)):
+        mae += abs((predicted_values[i] - realValues[i]))
+        rmse += (predicted_values[i] - realValues[i]) ** 2
+
+    mae = mae/len(realValues)
+    rmse = rmse/len(realValues)
+    precision=tp/(tp+fp)
+    recall = tp/(tp+fn)
+    return mae, rmse, precision, recall
+
+#get mae, rmse, precision, recall
+mae, rmse, precision, recall = maeRmsePrecisionRecall(book_array, similarUsers, similarities)
+
+if precision !=0 and recall !=0:
+    f1=2*precision*recall/(precision+recall)
+    print ('\nF1=',f1)
+
+
+#------------------------------------Outliers Section-----------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
