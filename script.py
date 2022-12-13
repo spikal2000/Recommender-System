@@ -269,7 +269,7 @@ def get_recommended_books(active_user, k):
     
     list_p = sorted(predictions_book.items(), key=lambda x:x[1], reverse = True)
     for j in range(0,k):
-        print(j+1, list_p[j][0], float(predictions_book[list_p[j][0]]))
+        print(j+1, list_p[j][0],',', float(predictions_book[list_p[j][0]]))
 
 
 
@@ -287,11 +287,12 @@ def maeRmsePrecisionRecall(r, similarUsers, similarities):
             #predict recall
             rhat = predict(userId,itemId,r, similarUsers, similarities)
             #print(j, rhat)
-            if rhat>=3 and r[itemId,userId]>=3:
+            th = 3
+            if rhat>=th and r[itemId,userId]>=th:
                 tp=tp+1
-            elif rhat>=3 and r[itemId,userId]<3:
+            elif rhat>=th and r[itemId,userId]<th:
                 fp = fp+1
-            elif rhat<3 and r[itemId,userId]>=3:
+            elif rhat<th and r[itemId,userId]>=th:
                 fn=fn+1
                 
     predicted_values =  pd.Series(predicted_values, dtype=object).fillna(0).tolist()
@@ -318,6 +319,10 @@ if precision !=0 and recall !=0:
 
 #------------------------------------Matrix Factorization Recommender-----------------------------------------
 print('\n\t\t\t------------------Matrix Factorization------------------')
+import warnings
+# ignore all warnings
+warnings.filterwarnings('ignore')
+
 def mf_find_similar_users(matrix, k):
     
     mf_similarUsers = -1*np.ones((nUsers, k))
@@ -364,6 +369,13 @@ def mf_get_recommended_books(active_user, k):
 
 active_user = 100
 
-mf_get_recommended_books(active_user, 5)    
+mf_get_recommended_books(active_user, 5)
+
+
+
+
+
+
+
 
 
