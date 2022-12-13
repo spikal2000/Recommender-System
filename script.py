@@ -317,7 +317,7 @@ if precision !=0 and recall !=0:
 
 
 #------------------------------------Matrix Factorization Recommender-----------------------------------------
-
+print('\n\t\t\t------------------Matrix Factorization------------------')
 def mf_find_similar_users(matrix, k):
     
     mf_similarUsers = -1*np.ones((nUsers, k))
@@ -341,29 +341,29 @@ def mf_find_similar_users(matrix, k):
 mf_similarUsers, mf_corr = mf_find_similar_users(book_pivot, 7)
 
 
+#so we can find the sum we fill the array with 0
+mf_corr = np.nan_to_num(mf_corr)
+
+mf_mae, mf_rmse, mf_precision, mf_recall = maeRmsePrecisionRecall(book_array, mf_similarUsers, mf_corr)
+
+if mf_precision !=0 and mf_recall !=0:
+    mf_f1=2*mf_precision*mf_recall/(mf_precision+mf_recall)
+    print ('\nF1=',mf_f1)
 
 
+matrix = pd.DataFrame(book_pivot)
+def mf_get_recommended_books(active_user, k):
+    predictions_book = {}
+    
+    for i in range(0,book_pivot.shape[1]):
+        predictions_book[matrix.columns[i]] = predict(active_user,i,book_array, mf_similarUsers, mf_corr)
+    
+    list_p = sorted(predictions_book.items(), key=lambda x:x[1], reverse = True)
+    for j in range(0,k):
+        print(j+1, list_p[j][0],',', float(predictions_book[list_p[j][0]]))
 
+active_user = 100
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+mf_get_recommended_books(active_user, 5)    
 
 
