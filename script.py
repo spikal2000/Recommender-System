@@ -129,21 +129,30 @@ print('There are only', famous_books.shape[0], 'books that have more than 40 rat
 final_ratings = filtering_rating[filtering_rating['Book-Title'].isin(famous_books)]
 #print('finalRating: ', final_ratings.shape)
 #making pivot table
+final_ratings = final_ratings.merge(users, on='User-ID')
 book_pivot = final_ratings.pivot_table(index='User-ID', 
                                        columns='Book-Title', 
                                        values='Book-Rating')
 #replace nan values
 book_pivot.fillna(0,inplace=True)
 print(book_pivot)
+#LOCATION
+demographic_data = final_ratings.pivot_table(index='User-ID', 
+                                        columns='Location', 
+                                        values= 'Book-Rating')
+demographic_data.fillna(0,inplace=True)
 #-----------____-------____---______----______---_____--______--
 print("\t\t--------------------------Q2_Recommender System--------------------------")
 print("\n\t\t\t\t******Find similarities******\n")
-def findKSimilar_users (r, k):
+def findKSimilar_users (r, k, loca):
         
     # similarUsers is 2-D matrix
     similarUsers=-1*np.ones((nUsers,k))
     
-    similarities=cosine_similarity(r)
+    users_books = cosine_similarity(r)
+    users_locations = cosine_similarity(loca)
+    # users_age = cosine_similarity(age)
+    similarities = (users_books+users_locations)/2
        
     # for each user
     for i in range(0, nUsers):
@@ -159,7 +168,7 @@ def findKSimilar_users (r, k):
     return similarUsers, similarities
 nNeighbours=7
 nUsers = book_pivot.shape[0]
-similarUsers, similarities=findKSimilar_users (book_pivot, nNeighbours)
+similarUsers, similarities=findKSimilar_users (book_pivot, nNeighbours, demographic_data)
 
 
 similarUsers_index =  {}
@@ -320,7 +329,7 @@ def mf_get_recommended_books(active_user, k):
     for j in range(0,k):
         print(j+1, list_p[j][0],',', float(predictions_book[list_p[j][0]]))
 
-active_user = 100
+
 print('Recommendations for user:', matrix.index[active_user], '\n')
 
 mf_get_recommended_books(active_user, 5)
@@ -330,8 +339,6 @@ if mf_precision !=0 and mf_recall !=0:
     print ('\nPrecision=',mf_precision,'\nRecall=',mf_recall,'\nF1=',mf_f1)
 
 #-----------____-------____---______----______---_____--______--
-
-
 
 
 
