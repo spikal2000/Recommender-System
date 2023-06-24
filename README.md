@@ -1,5 +1,5 @@
 # Recommender System
-##overview
+#overview
 The project analyzes a book dataset to explore various aspects like book popularity, author popularity, reading activity by age, and outlier detection.
 A hybrid recommendation system is developed by combining user-based collaborative filtering and matrix factorization techniques. This system generates personalized book recommendations for users based on their previous interactions and similarity to other users.
 The evaluation of the recommendation system is done using precision, recall, and F1 score.
